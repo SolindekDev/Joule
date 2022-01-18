@@ -16,10 +16,5 @@ It's a compiled programming language written in Ruby. Codes compile into Assembl
 Hello World
 
 ```python
-@include "std.jo"
-
-entry def main()
-	print{"Hello, World!"}
-	exit{1}
-end
+puts "Hello, World!"
 ```
