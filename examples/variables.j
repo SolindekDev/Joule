@@ -1,0 +1,1 @@
+const variable = "Siema" end
