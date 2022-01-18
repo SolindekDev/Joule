@@ -15,6 +15,6 @@ It's a compiled programming language written in Ruby. Codes compile into Assembl
 ### Example 
 Hello World
 
-```python
+```ruby
 puts "Hello, World!"
 ```
