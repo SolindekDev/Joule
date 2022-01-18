@@ -4,9 +4,9 @@ Programming language makes by hobby <3
 It's a compiled programming language written in Ruby. Codes compile into Assembly code that's make it compile. In feauter we wanna add self compile. Syntax of Joule is very easy..
 
 ### TODO
-- [ ] Lexer
-- [ ] Parser
-- [ ] Compiler
+- [x] Lexer
+- [x] Parser
+- [x] Compiler
 - [ ] Self compile
 - [ ] Website
 - [ ] Optimization 
