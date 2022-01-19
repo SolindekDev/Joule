@@ -271,7 +271,16 @@ const program = [
 
 ]
 
+class Function {
+        constructor (name, arguments) {
+               this.name = name
+               this.arguemnts = arguments
+        }
+}
+
 function parser(tokens) {
+
+        var function = []
 
 	var freeze = 0;
 	var error = 0;
