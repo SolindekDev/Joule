@@ -7,6 +7,7 @@ It's a compiled programming language written in JavaScript :/. Codes compile int
 - [x] Lexer
 - [x] Parser
 - [x] Compiler
+- [ ] Math
 - [ ] Add functions 
 - [ ] Add conditions
 - [ ] Self compile
