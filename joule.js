@@ -13,7 +13,7 @@ const TYPES = {
 	IDENTIFIER:  "IDENTIFIER",
 	FLOAT: 		 "FLOAT",
 	NONE: 		 "NONE",
-	
+
 	EQUALS:		 "EQUALS"
 }
 
@@ -77,7 +77,7 @@ function compile(only_compile, only_o, parser) {
 					exec("rm out.asm", (err, stou, ster) => {
 						if (err) return console.log(`Error ${err.message}`)
 						if (ster) return console.log(`StdError ${ster}`)
-			
+
 						console.log("Compiled into out.o file!")
 					})
 				} else {
@@ -91,7 +91,7 @@ function compile(only_compile, only_o, parser) {
 						exec("rm out.* && ./a.out", (err, stou, ster) => {
 							if (err) return console.log(`Error ${err.message}`)
 							if (ster) return console.log(`StdError ${ster}`)
-				
+
 							console.log(stou + "\n")
 						})
 					})
@@ -116,7 +116,7 @@ class Token {
 }
 
 function help() {
-	console.log("Joule - Programmig language - Help:\nCommand look: joule <file> <args>\n\tFile - Give file of name to compile\n\tArgs:\n\t\t-asm - Create output of program into out.asm file\n\t\t-o - Create output of program into out.o file\n\t\t-help - Show this\n\nLICENSE: MIT | github.com/SolindekDev/joule")
+	console.log("Joule - Programmig language - Help:\nCommand look: joule <file> <args>\n\tFile - Give file of name to compile\n\tArgs:\n\t\t-asm - Create output of program into out.asm file\n\t\t-debug - Shows opcodes thats are eval by the compiler\n\t\t-o - Create output of program into out.o file\n\t\t-help - Show this\n\nLICENSE: MIT | github.com/SolindekDev/joule")
 	process.exit(1)
 }
 
@@ -125,7 +125,7 @@ function readfile(path) {
 		const data = fs.readFileSync(path, 'UTF-8');
 		return data.split(/\r?\n/)
 	} catch {
-		console.log("Error: Could not open file\n")
+		console.log(`${colorRed}FileError:${colorWhite} ${path} ${colorReset}could open this file\n`)
 		help()
 	}
 }
@@ -164,17 +164,29 @@ function lexer(path) {
 			const last = line[col-1];
 			const lastt = token[token.length-1] || new Token(path, row, col, "None", TYPES.NONE);
 
+			// Inline comment
 			if (actual == "#") {
+				// if (string == true) {
+				// 	if (lastt.type == NONE) {
+				// 		token.push(new Token(path, row, col, actual, TYPES.STRING))
+				// 	} else {
+				// 		token[token.length-1].value += actual
+				// 	}
+				// } else {
+				// 	if (comments == true) {
+				// 		comments = false
+				// 	} else {
+				// 		comments = true
+				// 	}
+				// }
 				if (string == true) {
-					if (lastt.type == NONE) {
-						token.push(new Token(path, row, col, actual, TYPES.STRING))
+					if (lastt.type == TYPES.NONE) {
+							token.push(new Token(path, row, col, actual, TYPES.STRING))
 					} else {
-						token[token.length-1].value += actual
+							token[token.length-1].value += actual
 					}
 				} else {
-					if (comments == true) {
-						comments = false
-					} else {
+					if (comments == false) {
 						comments = true
 					}
 				}
@@ -239,16 +251,58 @@ function lexer(path) {
                 }
             } else if (actual == "=") {
 				token.push(new Token(path, row, col, actual, TYPES.EQUALS))
+			} else if (actual == ".") {
+				if (lastt.type == TYPES.NONE) {
+					token.push(new Token(path, row, col, actual, TYPES.IDENTIFIER))
+				} else {
+					if (lastt.type == TYPES.INT || last.type == TYPES.FLOAT) {
+						if (lastt.type == TYPES.INT) {
+							token.type = TYPES.FLOAT
+							token.value += actual
+						} else {
+
+						}
+					} else {
+						token.push(new Token(path, row, col, actual, TYPES.INT))
+					}
+				}
 			}
 		}
 		col = 0
 		row = 0
 		space = 1
+		comments = false
 	})
 
-	console.log(token)
+	// console.log(token)
 
 	return token
+}
+
+function parse_numbers(tokens) {
+	tokens.forEach((token) => {
+		if (token.type == TYPES.INT) {
+			const parseingInt = parseInt(token.value)
+
+			if (isNaN(parseingInt)) {
+				console.log(`${colorRed}ParseError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} failed at parsing number: "${token.value}"`)
+				process.exit(0)
+			} else {
+				token.value = parseingInt
+			}
+		} else if (token.type == TYPES.FLOAT) {
+			const parseingInt = parseInt(token.value)
+
+			if (isNaN(parseingInt)) {
+				console.log(`${colorRed}ParseError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} failed at parsing number: "${token.value}"`)
+				process.exit(0)
+			} else {
+				token.value = parseingInt
+			}
+		}
+	})
+
+	return tokens
 }
 
 const KEYWORDS = {
@@ -261,29 +315,39 @@ const KEYWORDS = {
 	END: "end"
 }
 
-const PRINT = (text) => { return({ code: 1, text: text }) }
-const EXIT = () => { return({ code: 2 }) }
-const HALT = () => { return({ code: 3 }) }
-const ASM = (text) => { return({ code: 4, text: text }) }
-const VARIABLE = (name, value, type) => { return({ code: 5, value: value, name: name, type: type }) }
+const PRINT = (text, pos) => { return({ code: 1, text: text, pos: pos }) }
+const EXIT = (pos) => { return({ code: 2, pos: pos }) }
+const HALT = (pos) => { return({ code: 3, pos: pos }) }
+const ASM = (text ,pos) => { return({ code: 4, text: text, pos: pos }) }
+const VARIABLE = (name, value, type ,pos) => { return({ code: 5, value: value, name: name, type: type, pos: pos }) }
 
 const program = [
 
 ]
 
+class Variables {
+	constructor(name, value, type) {
+		this.name = name;
+		this.value = value;
+		this.type = type;
+	}
+}
+
 class Function {
-        constructor (name, arguments) {
-               this.name = name
-               this.arguemnts = arguments
-        }
+	constructor(name, argument) {
+		this.name = name;
+		this.argument = argument
+	}
 }
 
 function parser(tokens) {
 
-        var function = []
-
 	var freeze = 0;
 	var error = 0;
+
+	var variables = [];
+	var names = [];
+	var functions = [];
 
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i]
@@ -296,87 +360,119 @@ function parser(tokens) {
 		if (token.type == TYPES.IDENTIFIER) {
 			if (token.value == KEYWORDS.PUTS) {
 				if (tokens[i+1] == undefined) {
-					console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}puts${colorReset}" keyword need argument`)
+					console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}puts${colorReset}" keyword need argument`)
 					error+=1;
 				} else {
 					if (tokens[i+1].type == TYPES.STRING) {
-						program.push(PRINT(tokens[i+1].value))
+						program.push(PRINT(tokens[i+1].value, token))
 						freeze++;
 					} else {
-						console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}puts${colorReset} keyword need argument of type ${colorYellow}STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+						console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}puts${colorReset} keyword need argument of type ${colorYellow}STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
 						error+=1;
 					}
 				}
 			} else if (token.value == KEYWORDS.EXIT) {
-				program.push(EXIT())
+				program.push(EXIT(token))
 			} else if (token.value == KEYWORDS.HALT) {
-				program.push(HALT())
+				program.push(HALT(token))
 			} else if (token.value == KEYWORDS.CONST) {
 				if (tokens[i+1] == undefined) {
-					console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need argument`)
+					console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need argument`)
 					error+=1;
 				} else {
 					if (tokens[i+1].type == TYPES.IDENTIFIER) {
 						if (tokens[i+2] == undefined) {
-							console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need argument`)
+							console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need argument`)
 							error+=1;
 						} else {
 							if (tokens[i+2].type == TYPES.EQUALS) {
 								if (tokens[i+3] == undefined) {
-									console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need value`)
+									console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need value`)
 									error+=1;
 								} else {
 									if (tokens[i+3].type == TYPES.INT || tokens[i+3].type == TYPES.STRING) {
 										if (tokens[i+4] == undefined) {
-										console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need "${colorYellow}end${colorReset}"`)
-										error+=1;
+											console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}const${colorReset}" keyword need "${colorYellow}end${colorReset}"`)
+											error+=1;
 										} else {
-										if (tokens[i+4].type == TYPES.IDENTIFIER) {
-										if (tokens[i+4].value == KEYWORDS.END) {
-										program.push(VARIABLE(tokens[i+1].value, tokens[i+3].value, tokens[i+3].type))
-										freeze += 4
-										}
-										} else {
-										console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
-										error+=1;
-										}
+											if (tokens[i+4].type == TYPES.IDENTIFIER) {
+												if (tokens[i+4].value == KEYWORDS.END) {
+													if (names.includes(tokens[i+1].value)) {
+														console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}${tokens[i+1].value}${colorReset} is already defined`)
+														freeze += 4
+														error+=1;
+													} else {
+														program.push(VARIABLE(tokens[i+1].value, tokens[i+3].value, tokens[i+3].type, token))
+														variables.push(new Variables(tokens[i+1].value, tokens[i+3].value, tokens[i+3].type))
+														names.push(tokens[i+1].value)
+														freeze += 4
+													}
+												}
+											} else {
+												console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+												error+=1;
+											}
 										}
 									} else {
-										console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}INT or STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+										console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}INT or STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
 										error+=1;
 									}
 								}
 							} else {
-								console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+								console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
 								error+=1;
 							}
 						}
 					} else {
-						console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+						console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}const${colorReset} keyword need argument of type ${colorYellow}IDENTIFIER${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
 						error+=1;
 					}
 				}
 			} else if (token.value == KEYWORDS.ASM) {
 				if (tokens[i+1] == undefined) {
-					console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}__asm__${colorReset}" keyword need argument`)
+					console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} "${colorYellow}__asm__${colorReset}" keyword need argument`)
 					error+=1;
 				} else {
 					if (tokens[i+1].type == TYPES.STRING) {
-						program.push(ASM(tokens[i+1].value))
+						program.push(ASM(tokens[i+1].value, token))
 						freeze++;
 					} else {
-						console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}__asm__${colorReset} keyword need argument of type ${colorYellow}STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
+						console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}__asm__${colorReset} keyword need argument of type ${colorYellow}STRING${colorReset} no ${colorYellow}${tokens[i+1].type}${colorReset}`)
 						error+=1;
 					}
 				}
 			} else {
-				console.log(`${colorRed}Error: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}${token.value}${colorReset} this keyword not found`)
-				error+=1;
+				if (names.includes(token.value)) {
+					if (variables.find(variable => variable.name == token.value) == undefined) {
+						if (functions.find(_function => _function.name == token.value) == undefined) {
+							console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}${tokens[i+1].value}${colorReset} is not defined`)
+							error+=1;
+						} else {
+							console.log("Function is defined")
+						}
+					} else {
+						const _var = variables.find(variable => variable.name == token.value)
+						const _freezer = 0
+						const _next = 0
+
+						if (_var.type == TYPES.INT) {
+							// if (tokens[i+_next])
+						} else if (_var.type == TYPES.FLOAT) {
+
+						} else {
+
+						}
+					}
+				} else {
+					console.log(`${colorRed}TypeError: ${colorWhite}${token.filename}:${token.row}:${token.col}${colorReset} ${colorYellow}${token.value}${colorReset} keyword or variable not found`)
+					error+=1;
+				}
 			}
 		}
 	}
 
-	console.log({freeze:freeze, error:error, program:program})
+	// console.log(variables)
+	// console.log({freeze:freeze, error:error, program:program})
 	return {freeze:freeze, error:error, program:program}
 }
 
@@ -385,17 +481,38 @@ async function exists(path) {
 		const data = fs.readFileSync(path, 'UTF-8');
 		return true
 	} catch (e) {
-		console.log("Error: file not found!\n")
+		console.log(`${colorRed}FileError:${colorWhite} ${path} ${colorReset}this file not exists\n`)
 		help()
 	}
+}
+
+function debuger(tokens) {
+	console.log(`----------------| ${colorRed}Debug${colorReset} |----------------\n`)
+	tokens.program.forEach((token) => {
+		if (token.code == 2) {
+			console.log(`${colorYellow}${token.pos.filename}:${token.pos.row}:${token.pos.col}${colorReset} | ${colorBlue}${token.pos.value}${colorReset} | ${colorPurple}${token.code}${colorReset} |`)
+		} else if (token.code == 3) {
+			console.log(`${colorYellow}${token.pos.filename}:${token.pos.row}:${token.pos.col}${colorReset} | ${colorBlue}${token.pos.value}${colorReset} | ${colorPurple}${token.code}${colorReset} |`)
+		} else if (token.code == 1) {
+			console.log(`${colorYellow}${token.pos.filename}:${token.pos.row}:${token.pos.col}${colorReset} | ${colorBlue}${token.pos.value}${colorReset} | ${colorPurple}${token.code}${colorReset} | text: ${colorCyan}${token.text}${colorReset}`)
+		} else if (token.code == 4) {
+			console.log(`${colorYellow}${token.pos.filename}:${token.pos.row}:${token.pos.col}${colorReset} | ${colorBlue}${token.pos.value}${colorReset} | ${colorPurple}${token.code}${colorReset} | text: ${colorCyan}${token.text}${colorReset}`)
+		} else if (token.code == 5) {
+			console.log(`${colorYellow}${token.pos.filename}:${token.pos.row}:${token.pos.col}${colorReset} | ${colorBlue}${token.pos.value}${colorReset} | ${colorPurple}${token.code}${colorReset} | type: ${colorCyan}${token.type}${colorReset} | name: ${colorPurple}${token.name}${colorReset} | value: ${colorCyan}${token.value}${colorReset} |`)
+		}
+	})
+	console.log(`\n-----------------------------------------`)
+
 }
 
 async function main() {
 	var only_compile = false;
 	var save_o = false;
+	var debug = false;
 
 	if (process.argv.includes("-asm")) only_compile = true;
 	if (process.argv.includes("-o")) save_o = true;
+	if (process.argv.includes("-debug")) debug = true;
 	if (process.argv.includes("-help")) return help();
 
 	process.argv.shift()
@@ -404,14 +521,20 @@ async function main() {
 		exists(process.argv[1]);
 
 		var tokens = lexer(process.argv[1]);
-		var parsert = parser(tokens);
+		var tokensParsed = parse_numbers(tokens)
+		var parsert = parser(tokensParsed);
 
 		if (parsert.error == 0) {
-			const compiler = compile(only_compile, save_o, parsert)
+			if (debug == true) {
+				debuger(parsert);
+				process.exit(1)
+			} else {
+				const compiler = compile(only_compile, save_o, parsert)
+			}
 		} else {
 			process.exit(1)
 		}
-	} else { 
+	} else {
 		help()
 	}
 }
