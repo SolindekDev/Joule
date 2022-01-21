@@ -20,5 +20,9 @@ It's a compiled programming language written in JavaScript :/. Codes compile int
 Hello World
 
 ```ruby
-puts "Hello, World!"
+fn main
+  puts "Hello, World!"
+end
+
+main
 ```
