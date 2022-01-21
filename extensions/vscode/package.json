@@ -1,0 +1,30 @@
+{
+    "name": "Joule",
+    "displayName": "Joule",
+    "description": "Programming language that's is compiled",
+    "version": "0.0.1",
+    "publisher": "Solindek",
+    "engines": {
+      "vscode": "^1.28.0"
+    },
+    "categories": [
+      "Programming Languages"
+    ],
+    "contributes": {
+      "languages": [
+        {
+          "id": "joule",
+          "extensions": [
+            ".j"
+          ],
+          "aliases": [
+            "Joule",
+            "jo",
+            "Joule",
+            "jou"
+          ],
+          "configuration": "./language.json"
+        }
+      ]
+    }
+  }
